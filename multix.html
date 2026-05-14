@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multiplicación cruzada</title>
+  <style>
+    :root{
+      --bg:#0f1115;
+      --panel:#171a21;
+      --panel2:#20242e;
+      --text:#f2f2f2;
+      --muted:#9ca3af;
+      --ok:#22c55e;
+      --bad:#ef4444;
+      --active:#facc15;
+      --done:#4b5563;
+      --cell:42px;
+      --gap:4px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      touch-action:manipulation;
+    }
+
+    .app{
+      max-width:760px;
+      margin:0 auto;
+      padding:16px;
+      padding-bottom:110px;
+    }
+
+    h1{
+      font-size:24px;
+      margin:6px 0 14px;
+      text-align:center;
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid #2a2f3a;
+      border-radius:18px;
+      padding:14px;
+      margin-bottom:14px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+
+    .controls{
+      display:grid;
+      gap:10px;
+      grid-template-columns:1fr 1fr;
+    }
+
+    label{
+      font-size:13px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:4px;
+    }
+
+    select,input,button{
+      width:100%;
+      border:0;
+      border-radius:12px;
+      padding:12px;
+      font-size:16px;
+      background:var(--panel2);
+      color:var(--text);
+      outline:none;
+    }
+
+    input{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    button{
+      cursor:pointer;
+      font-weight:700;
+      background:#334155;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    button:active{
+      transform:scale(.98);
+    }
+
+    .primary{
+      background:#2563eb;
+    }
+
+    .danger{
+      background:#7f1d1d;
+    }
+
+    .wide{
+      grid-column:1 / -1;
+    }
+
+    .custom-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .hint{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      margin-top:8px;
+    }
+
+    .multiply-wrap{
+      overflow-x:auto;
+      padding-bottom:6px;
+      width:100%;
+      overscroll-behavior-x:contain;
+    }
+
+    .multiply{
+      display:grid;
+      grid-auto-rows:var(--cell);
+      justify-content:center;
+      gap:var(--gap);
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      user-select:none;
+      min-width:0;
+      margin-top:6px;
+    }
+
+    .digit,
+    .symbol,
+    .empty{
+      width:var(--cell);
+      height:var(--cell);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:10px;
+      font-size:calc(var(--cell) * 0.62);
+      font-weight:800;
+    }
+
+    .digit{
+      background:#f8fafc;
+      color:#0f172a;
+      border:2px solid transparent;
+      position:relative;
+    }
+
+    .digit::after{
+      display:none;
+      content:attr(data-pos);
+      position:absolute;
+      right:4px;
+      bottom:2px;
+      font-size:calc(var(--cell) * 0.22);
+      color:#64748b;
+      font-weight:700;
+    }
+
+    .digit.active{
+      border-color:var(--active);
+      box-shadow:0 0 0 3px rgba(250,204,21,.18);
+    }
+
+    .digit.done{
+      background:var(--done);
+      color:#cbd5e1;
+      opacity:.75;
+    }
+
+    .symbol{
+      color:var(--muted);
+    }
+
+    .line{
+      height:3px;
+      background:#cbd5e1;
+      border-radius:999px;
+      grid-column:1 / -1;
+      align-self:center;
+    }
+
+    .answer-cell{
+      width:var(--cell);
+      height:var(--cell);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      font-size:calc(var(--cell) * 0.62);
+      font-weight:900;
+      border:2px solid #334155;
+      background:#111827;
+      color:white;
+      padding:0;
+      border-radius:10px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      user-select:none;
+    }
+
+    .answer-cell.current{
+      border-color:var(--active);
+      box-shadow:0 0 0 3px rgba(250,204,21,.18);
+    }
+
+    .answer-cell.good{
+      border-color:var(--ok);
+      background:#052e16;
+      color:#dcfce7;
+    }
+
+    .answer-cell.bad{
+      border-color:var(--bad);
+      background:#450a0a;
+      color:#fee2e2;
+      animation:shake .12s linear 0s 2;
+    }
+
+    @keyframes shake{
+      0%{ transform:translateX(0); }
+      50%{ transform:translateX(3px); }
+      100%{ transform:translateX(-3px); }
+    }
+
+    .true-digit{
+      width:var(--cell);
+      height:var(--cell);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#64748b;
+      font-size:calc(var(--cell) * 0.45);
+    }
+
+    .status{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:14px;
+      color:var(--muted);
+      margin-top:10px;
+    }
+
+    .status strong{
+      color:white;
+    }
+
+    .timer-box{
+      margin-top:12px;
+      padding:12px;
+      border-radius:14px;
+      background:#111827;
+      border:1px solid #2f3645;
+      display:grid;
+      gap:6px;
+      text-align:center;
+    }
+
+    .timer-main{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size:28px;
+      font-weight:900;
+      color:#facc15;
+    }
+
+    .timer-small{
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .finished{
+      color:#22c55e;
+      font-weight:800;
+    }
+
+    .fake-keyboard{
+      position:sticky;
+      bottom:0;
+      z-index:20;
+      margin-top:12px;
+      background:#0b0d12;
+      border:1px solid #2a2f3a;
+      border-radius:18px;
+      padding:10px;
+      box-shadow:0 -8px 24px rgba(0,0,0,.3);
+    }
+
+    .keyboard-title{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      color:var(--muted);
+      font-size:13px;
+      margin-bottom:8px;
+    }
+
+    .keyboard-title strong{
+      color:#facc15;
+    }
+
+    .keys{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:8px;
+    }
+
+    .key{
+      min-height:48px;
+      font-size:22px;
+      font-weight:900;
+      border-radius:14px;
+      background:#1f2937;
+      color:white;
+    }
+
+    .key.action{
+      font-size:15px;
+      background:#374151;
+    }
+
+    .key.okkey{
+      background:#166534;
+    }
+
+    .key.dangerkey{
+      background:#7f1d1d;
+    }
+
+    .diags{
+      display:grid;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .diag{
+      background:#111827;
+      border:1px solid #2f3645;
+      border-radius:14px;
+      padding:10px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size:14px;
+      line-height:1.35;
+    }
+
+    .diag.current{
+      border-color:var(--active);
+      background:#27200a;
+    }
+
+    .diag.done{
+      opacity:.55;
+      background:#1f2937;
+    }
+
+    .diag-title{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:4px;
+      font-family:system-ui, sans-serif;
+    }
+
+    .diag-title b{
+      color:white;
+    }
+
+    .mini{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .toggle{
+      margin-top:10px;
+      background:#475569;
+    }
+
+    .hidden{
+      display:none;
+    }
+
+    .history-top{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-bottom:10px;
+    }
+
+    .history-list{
+      display:grid;
+      gap:8px;
+      max-height:420px;
+      overflow:auto;
+      padding-right:2px;
+    }
+
+    .history-item{
+      background:#111827;
+      border:1px solid #2f3645;
+      border-radius:14px;
+      padding:10px;
+      font-size:14px;
+      line-height:1.35;
+    }
+
+    .history-item strong{
+      color:white;
+    }
+
+    .history-time{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color:#facc15;
+      font-size:18px;
+      font-weight:900;
+    }
+
+    .history-meta{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+    }
+
+    @media(max-width:520px){
+      :root{
+        --gap:3px;
+      }
+
+      .app{
+        padding:8px;
+        padding-bottom:120px;
+      }
+
+      .panel{
+        padding:10px;
+        border-radius:16px;
+      }
+
+      h1{
+        font-size:21px;
+      }
+
+      .controls,
+      .custom-row,
+      .history-top{
+        grid-template-columns:1fr;
+      }
+
+      .timer-main{
+        font-size:24px;
+      }
+
+      .key{
+        min-height:46px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <h1>Multiplicación cruzada</h1>
+
+    <section class="panel">
+      <div class="controls">
+        <div>
+          <label>Cifras del número de arriba</label>
+          <select id="digitsA"></select>
+        </div>
+
+        <div>
+          <label>Cifras del número de abajo</label>
+          <select id="digitsB"></select>
+        </div>
+
+        <button class="primary" id="newBtn">Nueva cuenta random</button>
+        <button id="clearBtn">Limpiar respuestas</button>
+      </div>
+
+      <div class="custom-row">
+        <div>
+          <label>Número de arriba manual</label>
+          <input id="manualA" inputmode="numeric" placeholder="Ej: 444">
+        </div>
+
+        <div>
+          <label>Número de abajo manual</label>
+          <input id="manualB" inputmode="numeric" placeholder="Ej: 333">
+        </div>
+
+        <button class="wide" id="useManualBtn">Usar números manuales</button>
+      </div>
+
+      <div class="hint">
+        Contestás desde la derecha: unidades, decenas, centenas.
+        Las respuestas no usan input real, así Android no abre el teclado.
+        Abajo tenés el teclado numérico propio.
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="multiply-wrap">
+        <div id="multiply" class="multiply"></div>
+      </div>
+
+      <div class="fake-keyboard" id="fakeKeyboard">
+        <div class="keyboard-title">
+          <span>Teclado numérico interno</span>
+          <span>Actual: <strong id="keyboardCurrentLabel">-</strong></span>
+        </div>
+
+        <div class="keys">
+          <button class="key" data-key="1">1</button>
+          <button class="key" data-key="2">2</button>
+          <button class="key" data-key="3">3</button>
+          <button class="key" data-key="4">4</button>
+          <button class="key" data-key="5">5</button>
+          <button class="key" data-key="6">6</button>
+          <button class="key" data-key="7">7</button>
+          <button class="key" data-key="8">8</button>
+          <button class="key" data-key="9">9</button>
+          <button class="key action dangerkey" data-key="back">Borrar</button>
+          <button class="key" data-key="0">0</button>
+          <button class="key action" data-key="clear">Limpiar</button>
+        </div>
+      </div>
+
+      <div class="status">
+        <div>Cuenta: <strong id="accountLabel"></strong></div>
+        <div>Diagonal actual: <strong id="currentLabel"></strong></div>
+        <div>Progreso: <strong id="progressLabel"></strong></div>
+      </div>
+
+      <div class="timer-box">
+        <div class="timer-main" id="timerLabel">00:00.0</div>
+        <div class="timer-small" id="timerState">El tiempo arranca con cada cuenta nueva.</div>
+      </div>
+
+      <button class="toggle" id="toggleHelpBtn">Ocultar/mostrar ayuda de diagonales</button>
+      <button class="toggle" id="toggleHistoryBtn">Ver/ocultar historial de tiempos</button>
+    </section>
+
+    <section class="panel" id="historyPanel">
+      <div class="history-top">
+        <button id="refreshHistoryBtn">Actualizar historial</button>
+        <button class="danger" id="clearHistoryBtn">Borrar historial</button>
+      </div>
+
+      <div class="hint">
+        Se guarda en este navegador usando <b>localStorage</b>.
+      </div>
+
+      <div id="historyList" class="history-list"></div>
+    </section>
+
+    <section class="panel" id="helpPanel">
+      <div class="hint">
+        Cada bloque muestra la diagonal cruzada, la suma, el carry que entra y el dígito esperado.
+      </div>
+      <div id="diags" class="diags"></div>
+    </section>
+  </div>
+
+  <script>
+    const $ = sel => document.querySelector(sel);
+
+    const digitsA = $("#digitsA");
+    const digitsB = $("#digitsB");
+    const newBtn = $("#newBtn");
+    const clearBtn = $("#clearBtn");
+    const useManualBtn = $("#useManualBtn");
+    const manualA = $("#manualA");
+    const manualB = $("#manualB");
+    const multiply = $("#multiply");
+    const diags = $("#diags");
+    const accountLabel = $("#accountLabel");
+    const currentLabel = $("#currentLabel");
+    const progressLabel = $("#progressLabel");
+    const keyboardCurrentLabel = $("#keyboardCurrentLabel");
+    const toggleHelpBtn = $("#toggleHelpBtn");
+    const helpPanel = $("#helpPanel");
+    const toggleHistoryBtn = $("#toggleHistoryBtn");
+    const historyPanel = $("#historyPanel");
+    const historyList = $("#historyList");
+    const refreshHistoryBtn = $("#refreshHistoryBtn");
+    const clearHistoryBtn = $("#clearHistoryBtn");
+    const timerLabel = $("#timerLabel");
+    const timerState = $("#timerState");
+
+    const HISTORY_KEY = "cross_multiplication_times_v2_no_android_keyboard";
+
+    let A = 444;
+    let B = 333;
+    let answers = [];
+    let expected = [];
+    let diagData = [];
+    let productStr = "";
+    let productLen = 0;
+
+    let startTime = null;
+    let endTime = null;
+    let timerInterval = null;
+    let savedThisRound = false;
+
+    for(let i = 2; i <= 8; i++){
+      const oa = document.createElement("option");
+      oa.value = i;
+      oa.textContent = i + " cifras";
+      digitsA.appendChild(oa);
+
+      const ob = document.createElement("option");
+      ob.value = i;
+      ob.textContent = i + " cifras";
+      digitsB.appendChild(ob);
+    }
+
+    digitsA.value = 3;
+    digitsB.value = 3;
+    historyPanel.classList.add("hidden");
+
+    function randomNDigits(n){
+      const min = 10 ** (n - 1);
+      const max = 10 ** n - 1;
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function cleanNumberText(v){
+      return String(v).replace(/\D/g, "");
+    }
+
+    function useNumbers(a, b){
+      A = Number(a);
+      B = Number(b);
+
+      if(!Number.isSafeInteger(A) || !Number.isSafeInteger(B) || A <= 0 || B <= 0){
+        alert("Poné números válidos.");
+        return;
+      }
+
+      productStr = String(A * B);
+      productLen = productStr.length;
+      expected = productStr.split("").reverse();
+      answers = Array(productLen).fill("");
+      savedThisRound = false;
+
+      buildDiagData();
+      startTimer();
+      render();
+    }
+
+    function fitCellsToScreen(){
+      const wrap = document.querySelector(".multiply-wrap");
+      if(!wrap || !productLen) return;
+
+      const available = wrap.clientWidth;
+      const isMobile = window.innerWidth <= 520;
+      const gap = isMobile ? 3 : 4;
+      const totalGaps = gap * (productLen - 1);
+
+      let size = Math.floor((available - totalGaps) / productLen);
+
+      const minSize = isMobile ? 22 : 30;
+      const maxSize = isMobile ? 42 : 46;
+
+      size = Math.max(minSize, Math.min(maxSize, size));
+
+      document.documentElement.style.setProperty("--cell", size + "px");
+      document.documentElement.style.setProperty("--gap", gap + "px");
+    }
+
+    function startTimer(){
+      startTime = Date.now();
+      endTime = null;
+      savedThisRound = false;
+
+      if(timerInterval){
+        clearInterval(timerInterval);
+      }
+
+      timerInterval = setInterval(updateTimerDisplay, 100);
+      timerState.textContent = "Cronómetro corriendo...";
+      updateTimerDisplay();
+    }
+
+    function stopTimerAndSave(){
+      if(savedThisRound) return;
+
+      endTime = Date.now();
+
+      if(timerInterval){
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+
+      const elapsedMs = endTime - startTime;
+      savedThisRound = true;
+
+      timerState.innerHTML = `<span class="finished">Terminada. Tiempo guardado.</span>`;
+      updateTimerDisplay();
+
+      saveHistory({
+        id: cryptoRandomId(),
+        dateISO: new Date().toISOString(),
+        dateLocal: formatDateLocal(new Date()),
+        a: A,
+        b: B,
+        result: A * B,
+        digitsA: String(A).length,
+        digitsB: String(B).length,
+        elapsedMs,
+        elapsedText: formatElapsed(elapsedMs)
+      });
+
+      renderHistory();
+    }
+
+    function updateTimerDisplay(){
+      if(!startTime){
+        timerLabel.textContent = "00:00.0";
+        return;
+      }
+
+      const now = endTime || Date.now();
+      timerLabel.textContent = formatElapsed(now - startTime);
+    }
+
+    function formatElapsed(ms){
+      const totalTenths = Math.floor(ms / 100);
+      const tenths = totalTenths % 10;
+      const totalSeconds = Math.floor(totalTenths / 10);
+      const seconds = totalSeconds % 60;
+      const minutes = Math.floor(totalSeconds / 60);
+
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${tenths}`;
+    }
+
+    function formatDateLocal(d){
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+    }
+
+    function cryptoRandomId(){
+      if(window.crypto && crypto.randomUUID){
+        return crypto.randomUUID();
+      }
+
+      return "id_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+    }
+
+    function loadHistory(){
+      try{
+        const raw = localStorage.getItem(HISTORY_KEY);
+        if(!raw) return [];
+        const data = JSON.parse(raw);
+        return Array.isArray(data) ? data : [];
+      }catch(e){
+        return [];
+      }
+    }
+
+    function saveHistory(item){
+      const history = loadHistory();
+      history.unshift(item);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }
+
+    function clearHistory(){
+      if(!confirm("¿Borrar todo el historial de tiempos?")){
+        return;
+      }
+
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+    }
+
+    function renderHistory(){
+      const history = loadHistory();
+      historyList.innerHTML = "";
+
+      if(history.length === 0){
+        historyList.innerHTML = `<div class="hint">Todavía no hay tiempos guardados.</div>`;
+        return;
+      }
+
+      history.forEach((h, index) => {
+        const item = document.createElement("div");
+        item.className = "history-item";
+
+        item.innerHTML = `
+          <div class="history-time">#${history.length - index} — ${escapeHTML(h.elapsedText)}</div>
+          <div><strong>${escapeHTML(h.a)} × ${escapeHTML(h.b)}</strong> = ${escapeHTML(h.result)}</div>
+          <div class="history-meta">
+            ${escapeHTML(h.digitsA)}×${escapeHTML(h.digitsB)} cifras · ${escapeHTML(h.dateLocal || h.dateISO)}
+          </div>
+        `;
+
+        historyList.appendChild(item);
+      });
+    }
+
+    function escapeHTML(v){
+      return String(v)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function buildDiagData(){
+      const ar = String(A).split("").reverse().map(Number);
+      const br = String(B).split("").reverse().map(Number);
+
+      diagData = [];
+      let carry = 0;
+
+      for(let k = 0; k < productLen; k++){
+        const pairs = [];
+        let raw = 0;
+
+        for(let i = 0; i < ar.length; i++){
+          const j = k - i;
+          if(j >= 0 && j < br.length){
+            const value = ar[i] * br[j];
+            raw += value;
+            pairs.push({
+              aDigit: ar[i],
+              bDigit: br[j],
+              aPos: i,
+              bPos: j,
+              value
+            });
+          }
+        }
+
+        const total = raw + carry;
+        const digit = total % 10;
+        const nextCarry = Math.floor(total / 10);
+
+        diagData.push({
+          k,
+          pairs,
+          raw,
+          carryIn: carry,
+          total,
+          digit,
+          carryOut: nextCarry
+        });
+
+        carry = nextCarry;
+      }
+    }
+
+    function firstUnansweredIndex(){
+      for(let i = 0; i < answers.length; i++){
+        if(answers[i] !== expected[i]) return i;
+      }
+      return answers.length;
+    }
+
+    function answeredUpTo(){
+      return firstUnansweredIndex() - 1;
+    }
+
+    function isFinished(){
+      return answers.length > 0 && answers.every((x, i) => x === expected[i]);
+    }
+
+    function pressVirtualKey(key){
+      if(savedThisRound) return;
+
+      if(key === "clear"){
+        clearAnswers();
+        return;
+      }
+
+      if(key === "back"){
+        backspaceAnswer();
+        return;
+      }
+
+      if(!/^\d$/.test(key)) return;
+
+      const pos = firstUnansweredIndex();
+      if(pos >= productLen) return;
+
+      answers[pos] = key;
+
+      if(key === expected[pos]){
+        render();
+      }else{
+        render();
+
+        const badCell = document.querySelector(`.answer-cell[data-pos="${pos}"]`);
+        if(badCell){
+          badCell.classList.remove("bad");
+          void badCell.offsetWidth;
+          badCell.classList.add("bad");
+        }
+      }
+    }
+
+    function backspaceAnswer(){
+      let pos = firstUnansweredIndex();
+
+      if(pos < productLen && answers[pos] !== ""){
+        answers[pos] = "";
+        render();
+        return;
+      }
+
+      const previous = pos - 1;
+      if(previous >= 0){
+        answers[previous] = "";
+        render();
+      }
+    }
+
+    function scrollCurrentIntoViewSoft(){
+      const activeK = firstUnansweredIndex();
+      const cell = document.querySelector(`.answer-cell[data-pos="${activeK}"]`);
+      const wrap = document.querySelector(".multiply-wrap");
+
+      if(!cell || !wrap || activeK >= productLen) return;
+
+      const aLen = String(A).length;
+      const bLen = String(B).length;
+
+      let usefulPositions = [];
+
+      for(let i = 0; i < aLen; i++){
+        const j = activeK - i;
+        if(j >= 0 && j < bLen){
+          usefulPositions.push(i);
+        }
+      }
+
+      for(let j = 0; j < bLen; j++){
+        const i = activeK - j;
+        if(i >= 0 && i < aLen){
+          usefulPositions.push(j);
+        }
+      }
+
+      usefulPositions.push(activeK);
+
+      const minPos = Math.min(...usefulPositions);
+      const maxPos = Math.max(...usefulPositions);
+
+      const cellSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cell")) || 36;
+      const gapSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--gap")) || 3;
+      const step = cellSize + gapSize;
+
+      const minColFromLeft = productLen - 1 - maxPos;
+      const maxColFromLeft = productLen - 1 - minPos;
+
+      const usefulCenterX = ((minColFromLeft + maxColFromLeft + 1) / 2) * step;
+      const extraOffset = 12;
+      const targetScrollLeft = usefulCenterX - (wrap.clientWidth / 2) + extraOffset;
+
+      wrap.scrollTo({
+        left: Math.max(0, targetScrollLeft),
+        behavior: "smooth"
+      });
+
+      cell.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest"
+      });
+    }
+
+    function render(){
+      fitCellsToScreen();
+
+      renderMultiplication();
+      renderDiags();
+      renderStatus();
+
+      if(isFinished()){
+        stopTimerAndSave();
+      }
+
+      setTimeout(() => {
+        scrollCurrentIntoViewSoft();
+      }, 60);
+    }
+
+    function renderMultiplication(){
+      multiply.innerHTML = "";
+
+      const aStr = String(A);
+      const bStr = String(B);
+      productStr = String(A * B);
+      productLen = productStr.length;
+
+      multiply.style.gridTemplateColumns = `repeat(${productLen}, var(--cell))`;
+
+      const rowA = 1;
+      const rowB = 2;
+      const rowLine = 3;
+      const rowInput = 4;
+      const rowTruth = 5;
+
+      const activeK = firstUnansweredIndex();
+      const doneK = answeredUpTo();
+
+      function addCell(el, col, row){
+        el.style.gridColumn = col;
+        el.style.gridRow = row;
+        multiply.appendChild(el);
+      }
+
+      function addDigit(digit, posFromRight, row, op, otherLen){
+        const el = document.createElement("div");
+        el.className = "digit";
+        el.textContent = digit;
+        el.dataset.pos = posFromRight;
+
+        const maxContribution = posFromRight + otherLen - 1;
+
+        if(doneK >= maxContribution){
+          el.classList.add("done");
+        }
+
+        if(contributesToDiagonal(posFromRight, op, activeK)){
+          el.classList.add("active");
+        }
+
+        const col = productLen - posFromRight;
+        addCell(el, col, row);
+      }
+
+      for(let idx = 0; idx < aStr.length; idx++){
+        const digit = aStr[idx];
+        const pos = aStr.length - 1 - idx;
+        addDigit(digit, pos, rowA, "a", bStr.length);
+      }
+
+      for(let idx = 0; idx < bStr.length; idx++){
+        const digit = bStr[idx];
+        const pos = bStr.length - 1 - idx;
+        addDigit(digit, pos, rowB, "b", aStr.length);
+      }
+
+      const symbol = document.createElement("div");
+      symbol.className = "symbol";
+      symbol.textContent = "×";
+      addCell(symbol, Math.max(1, productLen - bStr.length), rowB);
+
+      const line = document.createElement("div");
+      line.className = "line";
+      line.style.gridRow = rowLine;
+      multiply.appendChild(line);
+
+      for(let pos = productLen - 1; pos >= 0; pos--){
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "answer-cell";
+        cell.dataset.pos = pos;
+        cell.textContent = answers[pos] || "";
+
+        if(pos === activeK){
+          cell.classList.add("current");
+        }
+
+        if(answers[pos] !== ""){
+          if(answers[pos] === expected[pos]){
+            cell.classList.add("good");
+          }else{
+            cell.classList.add("bad");
+          }
+        }
+
+        cell.addEventListener("click", e => {
+          e.preventDefault();
+          scrollCurrentIntoViewSoft();
+        });
+
+        addCell(cell, productLen - pos, rowInput);
+      }
+
+      for(let pos = productLen - 1; pos >= 0; pos--){
+        const el = document.createElement("div");
+        el.className = "true-digit";
+        el.textContent = isFinished() ? expected[pos] : "";
+        addCell(el, productLen - pos, rowTruth);
+      }
+    }
+
+    function contributesToDiagonal(pos, op, k){
+      if(k >= productLen) return false;
+
+      const aLen = String(A).length;
+      const bLen = String(B).length;
+
+      if(op === "a"){
+        const j = k - pos;
+        return j >= 0 && j < bLen;
+      }else{
+        const i = k - pos;
+        return i >= 0 && i < aLen;
+      }
+    }
+
+    function renderDiags(){
+      diags.innerHTML = "";
+
+      const activeK = firstUnansweredIndex();
+      const doneK = answeredUpTo();
+
+      diagData.forEach(d => {
+        const card = document.createElement("div");
+        card.className = "diag";
+
+        if(d.k === activeK) card.classList.add("current");
+        if(d.k <= doneK) card.classList.add("done");
+
+        const title = document.createElement("div");
+        title.className = "diag-title";
+
+        const left = document.createElement("b");
+        left.textContent = `Posición ${d.k} desde la derecha`;
+
+        const right = document.createElement("span");
+        right.className = "mini";
+        right.textContent = placeName(d.k);
+
+        title.appendChild(left);
+        title.appendChild(right);
+
+        const body = document.createElement("div");
+
+        const eq = d.pairs.length
+          ? d.pairs.map(p => `${p.aDigit}×${p.bDigit}`).join(" + ")
+          : "solo carry final";
+
+        body.innerHTML = `
+          diagonal: ${eq}<br>
+          suma: ${d.raw} + carry ${d.carryIn} = ${d.total}<br>
+          dígito: <b>${d.digit}</b> &nbsp; | &nbsp; carry sale: ${d.carryOut}
+        `;
+
+        card.appendChild(title);
+        card.appendChild(body);
+        diags.appendChild(card);
+      });
+    }
+
+    function placeName(k){
+      const names = [
+        "unidades",
+        "decenas",
+        "centenas",
+        "millares",
+        "decenas de mil",
+        "centenas de mil",
+        "millones",
+        "decenas de millón",
+        "centenas de millón",
+        "miles de millón",
+        "decenas de miles de millón",
+        "centenas de miles de millón",
+        "billones",
+        "decenas de billón",
+        "centenas de billón",
+        "miles de billón"
+      ];
+
+      return names[k] || `10^${k}`;
+    }
+
+    function renderStatus(){
+      const activeK = firstUnansweredIndex();
+      const correct = answers.filter((x, i) => x === expected[i]).length;
+
+      accountLabel.textContent = `${A} × ${B}`;
+      progressLabel.textContent = `${correct}/${expected.length}`;
+
+      if(activeK >= expected.length){
+        currentLabel.textContent = "terminada";
+        keyboardCurrentLabel.textContent = "terminada";
+      }else{
+        currentLabel.textContent = `${placeName(activeK)} → posición ${activeK}`;
+        keyboardCurrentLabel.textContent = `${placeName(activeK)}`;
+      }
+    }
+
+    function clearAnswers(){
+      answers = Array(productLen).fill("");
+      savedThisRound = false;
+      startTimer();
+      render();
+    }
+
+    newBtn.addEventListener("click", () => {
+      const da = Number(digitsA.value);
+      const db = Number(digitsB.value);
+      useNumbers(randomNDigits(da), randomNDigits(db));
+    });
+
+    clearBtn.addEventListener("click", clearAnswers);
+
+    useManualBtn.addEventListener("click", () => {
+      const a = cleanNumberText(manualA.value);
+      const b = cleanNumberText(manualB.value);
+
+      if(a.length < 1 || b.length < 1){
+        alert("Escribí los dos números.");
+        return;
+      }
+
+      useNumbers(a, b);
+    });
+
+    toggleHelpBtn.addEventListener("click", () => {
+      helpPanel.classList.toggle("hidden");
+    });
+
+    toggleHistoryBtn.addEventListener("click", () => {
+      historyPanel.classList.toggle("hidden");
+      renderHistory();
+    });
+
+    refreshHistoryBtn.addEventListener("click", renderHistory);
+    clearHistoryBtn.addEventListener("click", clearHistory);
+
+    manualA.addEventListener("input", () => {
+      manualA.value = cleanNumberText(manualA.value);
+    });
+
+    manualB.addEventListener("input", () => {
+      manualB.value = cleanNumberText(manualB.value);
+    });
+
+    document.querySelectorAll("[data-key]").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.preventDefault();
+        pressVirtualKey(btn.dataset.key);
+      });
+    });
+
+    document.addEventListener("keydown", e => {
+      if(document.activeElement === manualA || document.activeElement === manualB) return;
+
+      if(/^\d$/.test(e.key)){
+        e.preventDefault();
+        pressVirtualKey(e.key);
+      }
+
+      if(e.key === "Backspace"){
+        e.preventDefault();
+        pressVirtualKey("back");
+      }
+
+      if(e.key === "Escape"){
+        e.preventDefault();
+        pressVirtualKey("clear");
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      fitCellsToScreen();
+      renderMultiplication();
+      scrollCurrentIntoViewSoft();
+    });
+
+    useNumbers(444, 333);
+    renderHistory();
+  </script>
+</body>
+</html>
